@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Mar 21 23:32:34 2020
+
+@author: garima
+"""
+
+import ray
+
+ray.init()
+
+#python regular function
+def regular_function():
+    return 1
+
+#ray remote function
+@ray.remote
+def remote_function():
+    return 1
+ 
+ #regular python function can be called just by function call
+assert regular_function()==1
+
+# ray remote function is called with attribute .remote which will return an object ID
+object_id= remote_function.remote()
+
+# creates a tasks that will be executed onw orker. use ray.get to retrieve results
+assert ray.get(object_id)==1
+
+#parallelism
+
+# regular function - serial invocation
+
+for _ in range(4):
+    regular_function()
+    
+# to invoke remote function
+for _ in range(4):
+    remote_function.remote()
+    
+#passing arg into remote function and executing the function
+@ray.remote
+def remote_chain_function(value):
+    return value +1
+
+y1_id = remote_function.remote()
+assert ray.get(y1_id)==1
+
+chained_id= remote_chain_function.remote(y1_id)
+assert ray.get(chained_id)==2
+
+#second tasks chained_id will not be executed 
+#until the first task has finished executing 
+
+#fetch results
+y=1
+obj_id=ray.put(y)
+assert ray.get(obj_id)==1
+
+#timeout
+
+from ray.exceptions import RayTimeoutError
+import time
+from time import sleep
+@ray.remote
+def long_running_function():
+    time.sleep(8)
+
+obj_id= long_running_function.remote()
+
+try:
+    ray.get(obj_id, timeout=4)
+except RayTimeoutError:
+    print ("'get' timed out")
+
+
+
